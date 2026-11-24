@@ -60,6 +60,8 @@ if (Test-Path $app) {
   Copy-Item (Join-Path $here 'app\pipeline\nv-pipeline.mjs') (Join-Path $app 'bin\nv-pipeline.mjs') -Force
   Copy-Item (Join-Path $here 'app\pipeline\nv-graphics.mjs') (Join-Path $app 'bin\nv-graphics.mjs') -Force
   Copy-Item (Join-Path $here 'app\pipeline\nv-replica.mjs') (Join-Path $app 'bin\nv-replica.mjs') -Force
+  Copy-Item (Join-Path $here 'app\pipeline\nv-remote.mjs') (Join-Path $app 'bin\nv-remote.mjs') -Force
+  Copy-Item (Join-Path $here 'app\pipeline\nv-bot.mjs') (Join-Path $app 'bin\nv-bot.mjs') -Force
   # The Replica skill pack (app\pipeline\replica\UPSTREAM.md): eleven skills and their Python tools, copied
   # as one folder so the paths between them hold. It is the copy in this repository, never a download.
   New-Item -ItemType Directory -Force (Join-Path $app 'pipeline\replica') | Out-Null
@@ -96,6 +98,12 @@ if (Test-Path $app) {
       }
       "installed the Replica skills -> $skills\replica-*" + $(if ($kept) { " (left as they were: $($kept -join ', '))" } else { '' })
     }
+  }
+  # Bots: "@@name <request>" typed in Claude Code or Codex goes to that bot (docs\BOTS.md). The hook is
+  # appended to the agents' own hook lists (a .bak-nv-bot copy is kept); "nv-bot hooks remove" takes it out.
+  if (Get-Command node -ErrorAction SilentlyContinue) {
+    & node (Join-Path $app 'bin\nv-bot.mjs') hooks install
+    if ($LASTEXITCODE -ne 0) { Write-Warning "the @@bot hook was not installed; run: node $(Join-Path $app 'bin\nv-bot.mjs') hooks install" }
   }
   "installed Herdr app pack -> $app"
   '  layout: herdr-app do layout.switch --name neon-violet   (dark and translucent)'

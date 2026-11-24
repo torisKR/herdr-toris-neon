@@ -21,6 +21,7 @@ A workspace pack for [Herdr](https://herdr.dev), the desktop app and terminal fo
 | **AI usage** | + menu → AI usage | Tokens, cost estimates and limits for Claude and Codex across your machines. |
 | **Screenshot paste** | `Ctrl+V` · `Cmd+V` | A screenshot on the clipboard goes to Claude Code or Codex as an image, also into terminals on another machine. |
 | **Update** | + menu → Update | Downloads the newest version from GitHub and installs it, with the progress on screen. |
+| **Bots** | `@@name` in Claude Code or Codex · sidebar | Long-lived agents with a purpose and a memory. `@@autoapp <idea>` starts an Auto app run. Details: [Bots](docs/BOTS.md). |
 | **Agent skill** | installed for Claude Code and Codex | `herdr-hc` teaches agents to orchestrate with `hc`, change the window and use the browser. |
 | **Neon violet theme** |  | Colors for the app, the terminal herdr and matching terminal schemes. |
 

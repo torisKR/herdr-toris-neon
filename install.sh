@@ -49,6 +49,8 @@ if [ -d "$app" ]; then
   cp "$here/app/pipeline/nv-pipeline.mjs" "$app/bin/nv-pipeline.mjs"
   cp "$here/app/pipeline/nv-graphics.mjs" "$app/bin/nv-graphics.mjs"
   cp "$here/app/pipeline/nv-replica.mjs" "$app/bin/nv-replica.mjs"
+  cp "$here/app/pipeline/nv-remote.mjs" "$app/bin/nv-remote.mjs"
+  cp "$here/app/pipeline/nv-bot.mjs" "$app/bin/nv-bot.mjs"
   mkdir -p "$app/pipeline/stages" && cp "$here"/app/pipeline/stages/*.md "$app/pipeline/stages/"
   # The Replica skill pack (app/pipeline/replica/UPSTREAM.md): eleven skills and their Python tools, copied
   # as one folder so the paths between them hold. It is the copy in this repository, never a download.
@@ -89,6 +91,11 @@ if [ -d "$app" ]; then
       echo "installed the Replica skills -> $skills/replica-*${kept:+ (left as they were:$kept)}"
     fi
   done
+  # Bots: "@@name <request>" typed in Claude Code or Codex goes to that bot (docs/BOTS.md). The hook is
+  # appended to the agents' own hook lists (a .bak-nv-bot copy is kept); "nv-bot hooks remove" takes it out.
+  if command -v node >/dev/null 2>&1; then
+    node "$app/bin/nv-bot.mjs" hooks install || echo "warning: the @@bot hook was not installed; run: node \"$app/bin/nv-bot.mjs\" hooks install" >&2
+  fi
   echo "installed Herdr app pack -> $app"
   echo "  layout: herdr-app do layout.switch --name neon-violet   (dark and translucent)"
   echo "  ALL agents ctrl+shift+a · Devices ctrl+shift+d · Pull requests ctrl+shift+g · Browser ctrl+shift+u (press again: back/close)"

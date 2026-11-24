@@ -497,6 +497,22 @@ test("a Today row opens the tool when no tab shows it, and a failed read says wh
   assert.ok(textOf(failed.h.view.render()).includes("Cannot find module"));
 });
 
+test("the Bots section lists this computer's bots with their state; a running one shows its terminal", async () => {
+  const bots = [{ name: "autoapp", agent: "claude", terminal: "bot-autoapp", status: "working" }, { name: "scout", agent: "codex", terminal: "bot-scout", status: null }];
+  const { h, asked } = sidebarSection("bots", ok({ bots }), { machines: () => [{ name: "lefairy", layout: "ready" }] });
+  await h.settle();
+  assert.deepEqual(plain(asked.map(a => [a.args[0], a.args.slice(1), a.on])), [["/local/herdr-app/bin/nv-bot.mjs", ["ls", "--json"], null]], "this computer only");
+  const view = h.view.render(), text = textOf(view);
+  assert.ok(text.includes("Bots") && text.includes("@@autoapp") && text.includes("작업 중") && text.includes("@@scout") && text.includes("꺼짐"));
+  find(view, "row-autoapp").events.on_click({}, h.cx);
+  find(view, "row-scout").events.on_click({}, h.cx);
+  find(view, "section-title").events.on_click({}, h.cx);
+  assert.deepEqual(h.calls, [{ name: "terminal.peek", args: { terminal: "bot-autoapp" } }], "a bot that is off and the title open nothing");
+  const empty = sidebarSection("bots", ok({ bots: [] }));
+  await empty.h.settle();
+  assert.ok(textOf(empty.h.view.render()).includes("@@autoapp <아이디어>"));
+});
+
 test("in the narrow rail a section draws no names", async () => {
   const { h } = sidebarSection("today", ok({ projects: [{ id: "a", name: "fishhook", focus: null }] }), {
     layout: () => ({ id: "root", children: [{ id: "sidebar", size: { px: 44 } }] }),

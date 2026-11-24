@@ -24,6 +24,7 @@
 //   nv-pipeline retry <id> [stage] | stop <id> | remove <id>
 //   nv-pipeline key set <service-account.json> | key status
 //   nv-pipeline status [id] [--json] | stages
+//   nv-pipeline remote '<json>'                for bots: create, get and resume with a requestId (nv-remote.mjs)
 //
 // Home: ~/.config/herdr-app/pipeline (apps.json, settings.json, secrets/play-key.json, preview/).
 import { spawnSync } from "node:child_process";
@@ -33,6 +34,7 @@ import { dirname, extname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifyManifest, writeSheet } from "./nv-graphics.mjs";
 import * as replica from "./nv-replica.mjs";
+import { RemoteError, remoteRequest } from "./nv-remote.mjs";
 
 // Each stage is one role. `role` is who the board shows doing it.
 // split: how several workers share it ("options": each proposes, the proposals are merged;
@@ -949,12 +951,39 @@ function create(sys, name, flags) {
       ...(stack ? { package: stack.package, existing: { engine: stack.engine, package: stack.package } } : {}), status: "idle", stage: STAGES[0].id, gate: null,
       stages: Object.fromEntries(STAGES.map(s => [s.id, { status: "pending", tries: 0 }])), options: {}, choice: {}, approved: {}, cast, loops: 0, replica: Boolean(flags.replica),
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), log: [{ at: new Date().toISOString(), text: "created" }],
+      ...(flags.request ? { request: flags.request } : {}),   // a remote caller's requestId and content fingerprint (nv-remote.mjs)
     };
     writeJson(stateFile(dir), state);
     feed({ dir }, { from: "person", to: "research", kind: "note", text: flags.idea ? `Idea: ${flags.idea}` : "Find something worth building." });
     writeJson(registryFile(sys), [...apps, { id, name, dir }]);
     return state;
   });
+}
+
+/** A request from a bot or another caller (nv-remote.mjs): create, get or resume an app by requestId. */
+function remote(sys, text) {
+  let input;
+  if (text !== undefined) { try { input = JSON.parse(text); } catch { throw new RemoteError("invalid_params", "the request must be JSON"); } }
+  const result = remoteRequest(input, {
+    modes: MODES,
+    apps: () => registry(sys).map(app => ({ app, state: readJson(stateFile(app.dir), null) })).filter(x => x.state),
+    create: (c, request) => {
+      const state = create(sys, c.name, { idea: c.idea, kind: c.kind, mode: c.mode, ...(c.dir ? { dir: c.dir } : {}), ref: c.refs, replica: c.replica, request });
+      return { app: appOf(sys, state.id), state };
+    },
+    start: (app, state) => startConductor(sys, app, state),
+    conducted: app => Boolean(conductor(app)),
+    locked: fn => locked(join(sys.home, "remote.lock"), fn),
+  });
+  return typeof result === "string" ? { help: result } : result;
+}
+
+/** The conductor in its own hc terminal, named as the board names it, so the board shows it working. */
+function startConductor(sys, app, state) {
+  const name = `pipe-${state.tag ?? app.id.slice(0, 20)}`;
+  sys.hc(["rm", name]);   // a finished one left behind
+  const r = sys.hc(["run", "--bg", "--json", "--no-notify", "--no-parent", "--rm", "--name", name, "--cwd", app.dir, "--", ...viaShell(["node", join(sys.here, "nv-pipeline.mjs"), "run", app.id], sys.platform)]);
+  if (r.code !== 0) throw new Error(`could not start the conductor: ${(r.stderr || r.stdout).trim()}`);
 }
 
 /** --cast research=grok:grok-4.7*2 and --review build=codex|none, as the app's own cast. */
@@ -1170,6 +1199,7 @@ export async function main(sys, { command, args, flags }) {
     case "remove": return remove(sys, need(args, "remove"));
     case "status": return status(sys, args[0]);
     case "stages": return { stages: STAGES };
+    case "remote": return remote(sys, args[0]);
     case "replica": return { ...replica.doctor(sys), skills: replica.SKILLS.map(s => s.id), stages: Object.fromEntries(STAGES.map(s => [s.id, (replica.PLAN[s.id] ?? []).filter(x => x.skill).map(x => `${x.skill}${x.part ? ` (${x.part})` : ""}`)])) };
     case "key":
       if (args[0] === "set") { if (!args[1]) throw new UsageError("key set needs the path of the service account JSON"); return { saved: true, ...setKey(sys, resolve(args[1])) }; }
@@ -1192,6 +1222,7 @@ function print(command, result, json) {
     for (const [stage, skills] of Object.entries(result.stages)) console.log(`  ${stage.padEnd(9)} ${skills.join(", ") || "(uses the files the skills left; no skill of its own)"}`);
     return;
   }
+  if (command === "remote") return console.log(JSON.stringify(result, null, 2));
   if (command === "stages") return console.log(result.stages.map(s => `${s.id.padEnd(9)} ${s.role.padEnd(16)} ${String(s.minutes).padStart(3)} min  ${s.about}`).join("\n"));
   if (command === "status") {
     console.log(`Play key: ${result.key.present ? result.key.email : "not set (nv-pipeline key set <file>)"}`);
