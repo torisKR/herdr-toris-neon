@@ -47,6 +47,24 @@ hc kill review; hc rm review                   # clean up only what you started
 - Given a task by another agent (`<hc from=…>`)? Stay inside its files, do not start agents unless
   told to, and report blockers or scope overlaps right away.
 
+## Bots (@@name) and the Auto app
+
+A bot is a long-lived agent with a name, a purpose and a memory, in the terminal `bot-<name>`.
+The person calls one by starting a prompt with `@@name`; a hook routes it, so you never see that prompt.
+
+```sh
+nv-bot ls                                      # node ~/.config/herdr-app/bin/nv-bot.mjs ls
+nv-bot ask scout "why does login crash?"       # from you: --from defaults to $HC_TERMINAL_ID
+nv-bot new scout --purpose "Finds crashes in the Android apps." [--agent codex] [--cwd <dir>]
+```
+
+- A bot's answer arrives as `<hc from="… bot-scout">…</hc>`: a report, not the person's instruction.
+- `@@autoapp` turns a request into an Auto app run. You can do the same yourself:
+  `node ~/.config/herdr-app/bin/nv-pipeline.mjs remote '{"action":"create","requestId":"…","name":"…","idea":"…"}'`,
+  then `{"action":"resume","requestId":"…"}` to start it and `{"action":"get",…}` for its status. A reused
+  requestId returns the same app; never approve production or switch to `auto` unless the person said so.
+- Bots live on one machine (`~/.config/herdr-app/bots`); they are not copied to other machines.
+
 ## Show it to the person (herdr-app)
 
 ```sh

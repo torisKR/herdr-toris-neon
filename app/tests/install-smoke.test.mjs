@@ -23,7 +23,7 @@ for (const cargo of [false, true]) {
       await writeFile(path.join(root, 'plugin/fixture-nv'), '#!/bin/sh\n[ "$1" = merge-keys ] || exit 2\nprintf "migrated\\n" > "$2"\n', { mode: 0o755 });
       await writeFile(path.join(root, 'plugin/fetch-bin.sh'), '#!/bin/sh\nroot=$(dirname "$0")\nmkdir -p "$root/bin"\ncp "$root/fixture-nv" "$root/bin/nv"\n');
       await writeFile(path.join(root, 'scripts/install-browser.sh'), '#!/bin/sh\nprintf "attempted\\n" > "$HERDR_APP_HOME/browser-attempt"\nexit 9\n');
-      for (const tool of ['sh', 'dirname', 'mkdir', 'cp', 'mv', 'date']) {
+      for (const tool of ['sh', 'dirname', 'mkdir', 'cp', 'mv', 'date', 'node']) {
         await symlink(execFileSync('which', [tool], { encoding: 'utf8' }).trim(), path.join(tools, tool));
       }
       if (cargo) for (const tool of ['cargo', 'git']) await writeFile(path.join(tools, tool), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
@@ -42,6 +42,10 @@ for (const cargo of [false, true]) {
       assert.ok((await readFile(path.join(home, '.claude/skills/replica-design/contrast.py'), 'utf8')).length > 0);
       assert.equal(await readFile(path.join(home, '.claude/skills/replica-brand/SKILL.md'), 'utf8'), 'mine\n');
       assert.match(result.stdout, /installed the Replica skills .*left as they were: replica-brand/);
+      // The @@bot hook lands in Claude Code's settings (it is set up here), next to the bot and remote tools.
+      for (const tool of ['nv-bot.mjs', 'nv-remote.mjs']) assert.ok((await readFile(path.join(app, 'bin', tool), 'utf8')).length > 0, tool);
+      const settings = JSON.parse(await readFile(path.join(home, '.claude/settings.json'), 'utf8'));
+      assert.match(settings.hooks.UserPromptSubmit[0].hooks[0].command, /nv-bot\.mjs" hook$/);
       assert.match(result.stderr, cargo ? /Browser setup failed/ : /Browser setup needs/);
       if (cargo) assert.equal(await readFile(path.join(app, 'browser-attempt'), 'utf8'), 'attempted\n');
       else await assert.rejects(readFile(path.join(app, 'browser-attempt')), { code: 'ENOENT' });

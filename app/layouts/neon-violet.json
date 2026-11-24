@@ -88,6 +88,20 @@
                 "weight": 0.6
               },
               "min": 62
+            },
+            {
+              "id": "nv-bots-list",
+              "type": "block",
+              "content": {
+                "mod": "nv-sidebar",
+                "props": {
+                  "section": "bots"
+                }
+              },
+              "size": {
+                "weight": 0.6
+              },
+              "min": 62
             }
           ]
         },
